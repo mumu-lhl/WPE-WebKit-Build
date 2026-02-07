@@ -2,6 +2,7 @@
 
 sudo apt-get update && sudo apt-get install -y \
   build-essential cmake ninja-build meson pkg-config \
+  ccache \
   ruby ruby-dev python3 python3-pip \
   gperf unifdef \
   libglib2.0-dev \
@@ -46,13 +47,22 @@ mkdir -p ~/wpe-build && cd ~/wpe-build
 # Set installation prefix (use /usr/local or a custom path)
 export WPE_PREFIX=/usr/local
 
+# Configure ccache
+export CCACHE_DIR=~/.ccache
+export CCACHE_MAXSIZE=10G
+ccache -M $CCACHE_MAXSIZE
+
 # === 1. Build libwpe ===
-wget https://wpewebkit.org/releases/libwpe-1.16.3.tar.xz
-tar xf libwpe-1.16.3.tar.xz
+if [ ! -d "libwpe-1.16.3" ]; then
+  wget https://wpewebkit.org/releases/libwpe-1.16.3.tar.xz
+  tar xf libwpe-1.16.3.tar.xz
+fi
 cd libwpe-1.16.3
 cmake -B build -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_INSTALL_PREFIX=$WPE_PREFIX
+  -DCMAKE_INSTALL_PREFIX=$WPE_PREFIX \
+  -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 ninja -C build
 sudo ninja -C build install
 cd ..
@@ -72,8 +82,10 @@ cd ..
 
 # === 3. Build WPE WebKit ===
 # This is the largest component and takes significant time/resources
-wget https://wpewebkit.org/releases/wpewebkit-2.50.4.tar.xz
-tar xf wpewebkit-2.50.4.tar.xz
+if [ ! -d "wpewebkit-2.50.4" ]; then
+  wget https://wpewebkit.org/releases/wpewebkit-2.50.4.tar.xz
+  tar xf wpewebkit-2.50.4.tar.xz
+fi
 cd wpewebkit-2.50.4
 
 # Configure with recommended options for flutter_inappwebview
@@ -81,6 +93,8 @@ cd wpewebkit-2.50.4
 cmake -B build -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=$WPE_PREFIX \
+  -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
   -DPORT=WPE \
   -DENABLE_DOCUMENTATION=OFF \
   -DENABLE_INTROSPECTION=OFF \
@@ -113,6 +127,9 @@ ninja -C build -j$(nproc)
 # Install
 sudo ninja -C build install
 cd ..
+
+# Show ccache stats
+ccache -s
 
 # === 4. Update library cache ===
 sudo ldconfig
