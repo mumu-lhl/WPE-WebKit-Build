@@ -15,8 +15,8 @@ jobs:
     name: Build and Package
     runs-on: ubuntu-latest
     outputs:
-      package_name: ${{ steps.package.outputs.name }}
-      package_path: ${{ steps.package.outputs.path }}
+      package_name: ${{ steps.archive.outputs.name }}
+      package_path: ${{ steps.archive.outputs.path }}
 
     steps:
       - name: Checkout repository
@@ -35,49 +35,27 @@ jobs:
           chmod +x build.sh
           ./build.sh
 
-      - name: Prepare for packaging
-        id: prep
+      - name: Archive build artifacts
+        id: archive
         run: |
-          # Create a staging directory for the package contents
-          mkdir -p staging/usr/
-          # The script installed everything into /usr/local. We copy it to our staging dir.
-          # GitHub runners are clean, so /usr/local should only contain our stuff.
-          cp -r /usr/local/* staging/usr/
-
-          mkdir -p staging/DEBIAN
-          
           VERSION="dev-${GITHUB_SHA::7}"
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             VERSION="${{ github.ref_name }}"
           fi
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
-
-          # This is a simplified approach for dependencies. For a robust solution,
-          # consider using dpkg-shlibdeps to automatically determine dependencies.
-          DEPS="libc6, libglib2.0-0, libsoup-3.0-0, libharfbuzz0b, libicu70, libgstreamer1.0-0"
-
-          cat <<EOF > staging/DEBIAN/control
-          Package: wpe-webkit
-          Version: ${VERSION#v}
-          Architecture: amd64
-          Maintainer: Mumulhl <mumulhl.666@gmail.com>
-          Description: A custom build of WPE WebKit.
-          Depends: ${DEPS}
-          EOF
-
-      - name: Build .deb package
-        id: package
-        run: |
-          PACKAGE_NAME="wpe-webkit-${VERSION#v}_amd64.deb"
-          dpkg-deb --build staging "${PACKAGE_NAME}"
-          echo "name=${PACKAGE_NAME}" >> $GITHUB_OUTPUT
-          echo "path=${PACKAGE_NAME}" >> $GITHUB_OUTPUT
+          
+          ARCHIVE_NAME="wpe-webkit-${VERSION}-amd64.tar.gz"
+          # Archive everything in /usr/local that was installed by build.sh
+          sudo tar -czf "${ARCHIVE_NAME}" -C /usr/local .
+          
+          echo "name=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
+          echo "path=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: deb-package
-          path: ${{ steps.package.outputs.path }}
+          name: wpe-webkit-binary
+          path: ${{ steps.archive.outputs.path }}
 
   create_release:
     name: Create Release
@@ -88,11 +66,10 @@ jobs:
       contents: write
 
     steps:
-      - name: Download .deb package from build job
+      - name: Download archive from build job
         uses: actions/download-artifact@v4
         with:
-          name: deb-package
-          # The artifact is downloaded to the root of the workspace
+          name: wpe-webkit-binary
           path: .
 
       - name: Create GitHub Release
