@@ -38,15 +38,16 @@ jobs:
       - name: Archive build artifacts
         id: archive
         run: |
-          VERSION="dev-${GITHUB_SHA::7}"
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            VERSION="${{ github.ref_name }}"
-          fi
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          
-          ARCHIVE_NAME="wpe-webkit-${VERSION}-amd64.tar.gz"
-          # Archive everything in /usr/local that was installed by build.sh
-          sudo tar -czf "${ARCHIVE_NAME}" -C /usr/local .
+          ARCHIVE_NAME="wpe-webkit-amd64.tar.gz"
+          # Archive only the specific library files
+          sudo tar -czf "${ARCHIVE_NAME}" -C \
+           /usr/local/include/wpe-1.0/ \
+           /usr/local/include/wpe-webkit-2.0/ \
+           /usr/local/libexec/wpe-webkit-2.0/ \
+           /usr/local/share/wpe-webkit-2.0/ \
+           /usr/local/lib/pkgconfig/wpe-* \
+           /usr/local/lib/libwpe-1.0.so* \
+           /usr/local/lib/libWPEWebKit-2.0.so*
           
           echo "name=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
           echo "path=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
