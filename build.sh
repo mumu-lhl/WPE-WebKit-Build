@@ -50,9 +50,13 @@ export WPE_PREFIX=/usr/local
 
 # If DESTDIR is set, add it to relevant paths so subsequent builds can find dependencies
 if [ -n "$DESTDIR" ]; then
+  export PKG_CONFIG_SYSROOT_DIR="$DESTDIR"
   export PKG_CONFIG_PATH="$DESTDIR$WPE_PREFIX/lib/pkgconfig:$DESTDIR$WPE_PREFIX/lib/x86_64-linux-gnu/pkgconfig:$DESTDIR$WPE_PREFIX/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
   export CMAKE_PREFIX_PATH="$DESTDIR$WPE_PREFIX${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
   export LD_LIBRARY_PATH="$DESTDIR$WPE_PREFIX/lib:$DESTDIR$WPE_PREFIX/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  
+  # Tell CMake to search in DESTDIR
+  CMAKE_EXTRA_ARGS="-DCMAKE_FIND_ROOT_PATH=$DESTDIR"
 fi
 
 # Configure ccache
@@ -67,6 +71,7 @@ if [ ! -d "libwpe-1.16.3" ]; then
 fi
 cd libwpe-1.16.3
 cmake -B build -G Ninja \
+  ${CMAKE_EXTRA_ARGS:-} \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=$WPE_PREFIX \
   -DCMAKE_C_COMPILER_LAUNCHER=ccache \
@@ -99,6 +104,7 @@ cd wpewebkit-2.50.4
 # Configure with recommended options for flutter_inappwebview
 # See "Optional Features and Dependencies" section above for all flags
 cmake -B build -G Ninja \
+  ${CMAKE_EXTRA_ARGS:-} \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=$WPE_PREFIX \
   -DCMAKE_C_COMPILER_LAUNCHER=ccache \
