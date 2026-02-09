@@ -33,15 +33,20 @@ jobs:
       - name: Run build script
         run: |
           chmod +x build.sh
-          export DESTDIR="${{ github.workspace }}/wpe-install"
           ./build.sh
 
       - name: Archive build artifacts
         id: archive
         run: |
-          ARCHIVE_NAME="wpe-webkit-amd64.tar.gz"
-          # Archive only the files installed into our custom DESTDIR
-          sudo tar -czf "${ARCHIVE_NAME}" -C "${{ github.workspace }}/wpe-install/usr/local" .
+          VERSION="dev-${GITHUB_SHA::7}"
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION="${{ github.ref_name }}"
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          
+          ARCHIVE_NAME="wpe-webkit-${VERSION}-amd64.tar.gz"
+          # Archive everything in /usr/local that was installed by build.sh
+          sudo tar -czf "${ARCHIVE_NAME}" -C /usr/local .
           
           echo "name=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
           echo "path=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT

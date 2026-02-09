@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 sudo apt-get update && sudo apt-get install -y \
   build-essential cmake ninja-build meson pkg-config \
@@ -48,13 +47,6 @@ mkdir -p ~/wpe-build && cd ~/wpe-build
 # Set installation prefix (use /usr/local or a custom path)
 export WPE_PREFIX=/usr/local
 
-# If DESTDIR is set, add it to relevant paths so subsequent builds can find dependencies
-if [ -n "$DESTDIR" ]; then
-  export PKG_CONFIG_PATH="$DESTDIR$WPE_PREFIX/lib/pkgconfig:$DESTDIR$WPE_PREFIX/lib/x86_64-linux-gnu/pkgconfig:$DESTDIR$WPE_PREFIX/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
-  export CMAKE_PREFIX_PATH="$DESTDIR$WPE_PREFIX${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
-  export LD_LIBRARY_PATH="$DESTDIR$WPE_PREFIX/lib:$DESTDIR$WPE_PREFIX/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-fi
-
 # Configure ccache
 export CCACHE_DIR=~/.ccache
 export CCACHE_MAXSIZE=10G
@@ -72,7 +64,7 @@ cmake -B build -G Ninja \
   -DCMAKE_C_COMPILER_LAUNCHER=ccache \
   -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 ninja -C build
-sudo DESTDIR="${DESTDIR:-}" ninja -C build install
+sudo ninja -C build install
 cd ..
 
 # === 2. Build WPEBackend-fdo (OPTIONAL - only for legacy fallback) ===
@@ -133,7 +125,7 @@ cmake -B build -G Ninja \
 ninja -C build -j$(nproc)
 
 # Install
-sudo DESTDIR="${DESTDIR:-}" ninja -C build install
+sudo ninja -C build install
 cd ..
 
 # Show ccache stats
